@@ -119,7 +119,7 @@
         </div>
 
         <!-- Panel de Estado -->
-        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 md:mb-8">
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-8">
             <div class="flex items-center mb-4">
                 <i class="fas fa-info-circle text-gray-500 text-3xl mr-3"></i>
                 <h2 class="text-xl md:text-2xl font-semibold text-osinergmin-blue">Estado del Sistema</h2>
@@ -168,154 +168,201 @@
                 </button>
             </div>
         </div>
-    </div>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+        <!-- Panel de Control de Fuente de Datos -->
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-8">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-database text-gray-700 text-3xl mr-3"></i>
+                <h2 class="text-xl md:text-2xl font-semibold text-osinergmin-blue">Fuente de Datos</h2>
+            </div>
+            <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+                <label class="inline-flex items-center">
+                    <input type="radio" class="form-radio" name="data-source" value="local" checked>
+                    <span class="ml-2">Sensor Local (/api/lecturas)</span>
+                </label>
+                <label class="inline-flex items-center">
+                    <input type="radio" class="form-radio" name="data-source" value="external">
+                    <span class="ml-2">API Externa (Railway)</span>
+                </label>
+            </div>
+        </div>
+    </div>
     
     <script>
-        // Función para obtener datos del área 2
-        async function obtenerDatosArea2() {
+        // Variables globales
+        let intervaloActualizacion = null;
+        let fuenteDatos = 'local'; // Siempre usar sensor local
+
+        // Función para obtener lecturas del sensor local
+        async function obtenerLecturasLocales() {
             try {
-                const btnObtenerArea2 = document.getElementById('btn-obtener-area2');
-                btnObtenerArea2.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Cargando...';
-                btnObtenerArea2.disabled = true;
+                const btnActualizar = document.getElementById('btn-actualizar');
+                btnActualizar.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Cargando...';
+                btnActualizar.disabled = true;
                 
-                // Mostrar mensaje de carga
-                const mensajeError = document.getElementById('mensaje-error');
-                mensajeError.textContent = "Obteniendo datos del sensor...";
-                mensajeError.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
-                mensajeError.classList.add('bg-blue-100', 'text-blue-700');
+                mostrarMensaje("Obteniendo datos del sensor local...", 'info');
                 
-                const response = await fetch('https://apisensoresmina-production.up.railway.app/api/variables-entorno');
+                const response = await fetch('/api/lecturas');
                 const datos = await response.json();
                 
-                console.log("Datos recibidos:", datos); // Para depuración
+                console.log("Datos del sensor local:", datos);
                 
-                // Filtrar solo los datos del área 2
-                const datosArea2 = datos.find(item => item.area_id === 2);
-                
-                console.log("Datos del área 2:", datosArea2); // Para depuración
-                
-                if (datosArea2) {
-                    // Actualizar la interfaz con los datos del área 2
-                    document.getElementById('nombre-area').textContent = datosArea2.Area?.nombre_area || "Área 2";
-                    document.getElementById('superficie-area').textContent = datosArea2.superficie_area || "120";
-                    document.getElementById('caudal-medido').textContent = datosArea2.caudal_medido || "0";
-                    document.getElementById('caudal-requerido').textContent = datosArea2.caudal_requerido || "50";
+                if (datos) {
+                    // Actualizar velocidad y temperatura
+                    const velocidadAire = datos.velocidad !== null ? datos.velocidad.toFixed(2) : "--";
+                    const temperatura = datos.temperatura !== null ? datos.temperatura.toFixed(2) : "--";
                     
-                    // Formatear la fecha
-                    let fechaTexto = "--";
-                    if (datosArea2.timestamp) {
-                        const fecha = new Date(datosArea2.timestamp);
-                        fechaTexto = fecha.toLocaleString();
-                    }
-                    document.getElementById('ultima-medicion').textContent = fechaTexto;
-                    document.getElementById('timestamp').textContent = fechaTexto;
+                    actualizarVelocidad(velocidadAire);
+                    actualizarTemperatura(temperatura);
                     
-                    // IMPORTANTE: Actualizar la velocidad del aire con el valor directo del sensor
-                    const velocidadAire = datosArea2.velocidad_aire || "0";
-                    document.getElementById('velocidad-valor').textContent = velocidadAire;
-                    
-                    // Actualizar la barra de progreso de velocidad
-                    const porcentajeVelocidad = Math.min(100, (parseFloat(velocidadAire) / 30) * 100);
-                    document.getElementById('velocidad-barra').style.width = `${porcentajeVelocidad}%`;
-                    
-                    // Actualizar temperatura si está disponible
-                    const temperatura = datosArea2.temperatura || "25";
-                    document.getElementById('temperatura-valor').textContent = temperatura;
-                    const porcentajeTemperatura = Math.min(100, (parseFloat(temperatura) / 50) * 100);
-                    document.getElementById('temperatura-barra').style.width = `${porcentajeTemperatura}%`;
+                    // Actualizar timestamp
+                    document.getElementById('timestamp').textContent = datos.timestamp || new Date().toLocaleString();
                     
                     // Actualizar estado de conexión
-                    document.getElementById('estado-conexion').textContent = "Conectado";
-                    document.getElementById('estado-conexion').className = "font-medium text-green-600";
+                    actualizarEstadoConexion(datos.sensor_online);
                     
-                    // Actualizar estado del sensor
-                    const sensorStatus = document.getElementById('sensor-status');
-                    sensorStatus.innerHTML = '<i class="fas fa-circle mr-1 text-green-600"></i> Conectado';
-                    sensorStatus.classList.remove('bg-gray-200', 'text-gray-800', 'bg-red-100', 'text-red-700');
-                    sensorStatus.classList.add('bg-green-100', 'text-green-700');
-                    
-                    // Mostrar mensaje de éxito
-                    mensajeError.textContent = "Datos del sensor cargados correctamente";
-                    mensajeError.classList.remove('bg-blue-100', 'text-blue-700', 'bg-red-100', 'text-red-700');
-                    mensajeError.classList.add('bg-green-100', 'text-green-700');
+                    // Mostrar mensaje según el estado
+                    if (datos.estado === "ok") {
+                        mostrarMensaje("Datos del sensor cargados correctamente", 'success');
+                    } else {
+                        mostrarMensaje(datos.mensaje || "Error al obtener datos del sensor", 'error');
+                    }
                 } else {
-                    // Si no hay datos, usar valores por defecto para evitar que se muestren guiones
-                    document.getElementById('nombre-area').textContent = "Área 2";
-                    document.getElementById('superficie-area').textContent = "120";
-                    document.getElementById('caudal-medido').textContent = "0";
-                    document.getElementById('caudal-requerido').textContent = "50";
-                    document.getElementById('velocidad-valor').textContent = "0";
-                    document.getElementById('temperatura-valor').textContent = "25";
-                    document.getElementById('ultima-medicion').textContent = new Date().toLocaleString();
+                    // Si no hay datos
+                    actualizarVelocidad("--");
+                    actualizarTemperatura("--");
                     document.getElementById('timestamp').textContent = new Date().toLocaleString();
-                    
-                    // Mostrar mensaje de error si no se encuentra el área 2
-                    mensajeError.textContent = "No se encontraron datos para el Área 2. Usando valores por defecto.";
-                    mensajeError.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-green-100', 'text-green-700');
-                    mensajeError.classList.add('bg-yellow-100', 'text-yellow-700');
+                    mostrarMensaje("No se recibieron datos del sensor local", 'warning');
                 }
             } catch (error) {
-                console.error('Error al obtener datos del área 2:', error);
-                
-                // En caso de error, usar valores por defecto
-                document.getElementById('nombre-area').textContent = "Área 2";
-                document.getElementById('superficie-area').textContent = "120";
-                document.getElementById('caudal-medido').textContent = "0";
-                document.getElementById('caudal-requerido').textContent = "50";
-                document.getElementById('velocidad-valor').textContent = "0";
-                document.getElementById('temperatura-valor').textContent = "25";
-                document.getElementById('ultima-medicion').textContent = new Date().toLocaleString();
+                console.error('Error al obtener datos del sensor local:', error);
+                actualizarVelocidad("--");
+                actualizarTemperatura("--");
                 document.getElementById('timestamp').textContent = new Date().toLocaleString();
-                
-                // Actualizar barras de progreso
-                document.getElementById('velocidad-barra').style.width = "0%";
-                document.getElementById('temperatura-barra').style.width = "50%";
-                
-                // Mostrar mensaje de error
-                const mensajeError = document.getElementById('mensaje-error');
-                mensajeError.textContent = "Error al obtener datos del API. Usando valores por defecto.";
-                mensajeError.classList.remove('hidden', 'bg-blue-100', 'text-blue-700', 'bg-green-100', 'text-green-700');
-                mensajeError.classList.add('bg-red-100', 'text-red-700');
+                mostrarMensaje("Error al obtener datos del sensor local: " + error.message, 'error');
             } finally {
-                // Restaurar botón
-                const btnObtenerArea2 = document.getElementById('btn-obtener-area2');
-                btnObtenerArea2.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Obtener Datos del Área 2';
-                btnObtenerArea2.disabled = false;
+                const btnActualizar = document.getElementById('btn-actualizar');
+                btnActualizar.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Actualizar Datos';
+                btnActualizar.disabled = false;
             }
         }
-        
+
+        // Función para actualizar velocidad del aire
+        function actualizarVelocidad(valor) {
+            document.getElementById('velocidad-valor').textContent = valor;
+            
+            if (valor !== "--" && !isNaN(parseFloat(valor))) {
+                const velocidadNumero = parseFloat(valor);
+                const porcentajeVelocidad = Math.min(100, (velocidadNumero / 30) * 100);
+                document.getElementById('velocidad-barra').style.width = `${porcentajeVelocidad}%`;
+            } else {
+                document.getElementById('velocidad-barra').style.width = "0%";
+            }
+        }
+
+        // Función para actualizar temperatura
+        function actualizarTemperatura(valor) {
+            document.getElementById('temperatura-valor').textContent = valor;
+            
+            if (valor !== "--" && !isNaN(parseFloat(valor))) {
+                const temperaturaNumero = parseFloat(valor);
+                const porcentajeTemperatura = Math.min(100, (temperaturaNumero / 50) * 100);
+                document.getElementById('temperatura-barra').style.width = `${porcentajeTemperatura}%`;
+            } else {
+                document.getElementById('temperatura-barra').style.width = "0%";
+            }
+        }
+
+        // Función para actualizar estado de conexión
+        function actualizarEstadoConexion(conectado) {
+            const estadoConexion = document.getElementById('estado-conexion');
+            const sensorStatus = document.getElementById('sensor-status');
+            
+            if (conectado) {
+                estadoConexion.textContent = "Conectado";
+                estadoConexion.className = "font-medium text-green-600";
+                
+                sensorStatus.innerHTML = '<i class="fas fa-circle mr-1 text-green-600"></i> Conectado';
+                sensorStatus.classList.remove('bg-gray-200', 'text-gray-800', 'bg-red-100', 'text-red-700');
+                sensorStatus.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                estadoConexion.textContent = "Desconectado";
+                estadoConexion.className = "font-medium text-red-600";
+                
+                sensorStatus.innerHTML = '<i class="fas fa-circle mr-1 text-red-600"></i> Desconectado';
+                sensorStatus.classList.remove('bg-gray-200', 'text-gray-800', 'bg-green-100', 'text-green-700');
+                sensorStatus.classList.add('bg-red-100', 'text-red-700');
+            }
+        }
+
+        // Función para usar valores por defecto
+        function usarValoresPorDefecto() {
+            document.getElementById('nombre-area').textContent = "Área 2";
+            document.getElementById('superficie-area').textContent = "120";
+            document.getElementById('caudal-medido').textContent = "0";
+            document.getElementById('caudal-requerido').textContent = "50";
+            actualizarVelocidad("0");
+            actualizarTemperatura("25");
+            document.getElementById('ultima-medicion').textContent = new Date().toLocaleString();
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+            actualizarEstadoConexion(false);
+        }
+
+        // Función para mostrar mensajes
+        function mostrarMensaje(mensaje, tipo) {
+            const mensajeError = document.getElementById('mensaje-error');
+            mensajeError.textContent = mensaje;
+            mensajeError.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700', 'bg-yellow-100', 'text-yellow-700');
+            
+            switch(tipo) {
+                case 'success':
+                    mensajeError.classList.add('bg-green-100', 'text-green-700');
+                    break;
+                case 'error':
+                    mensajeError.classList.add('bg-red-100', 'text-red-700');
+                    break;
+                case 'warning':
+                    mensajeError.classList.add('bg-yellow-100', 'text-yellow-700');
+                    break;
+                case 'info':
+                    mensajeError.classList.add('bg-blue-100', 'text-blue-700');
+                    break;
+                default:
+                    mensajeError.classList.add('bg-gray-100', 'text-gray-700');
+            }
+        }
+
+        // Función para manejar la actualización según la fuente seleccionada
+        function actualizarDatos() {
+            if (fuenteDatos === 'local') {
+                obtenerLecturasLocales();
+            } else {
+                obtenerDatosArea2();
+            }
+        }
+
         // Configuración de actualización automática
-        let intervaloActualizacion = null;
-        
         function toggleAutoRefresh() {
             const autoRefresh = document.getElementById('auto-refresh');
             const statusIndicator = document.getElementById('status-indicator');
             const refreshInterval = document.getElementById('refresh-interval');
             
             if (autoRefresh.checked) {
-                // Cambiar color del indicador
                 statusIndicator.classList.remove('bg-red-600');
                 statusIndicator.classList.add('bg-green-600');
                 
-                // Obtener intervalo en milisegundos
                 const intervaloMs = parseInt(refreshInterval.value) * 1000;
                 
-                // Detener cualquier intervalo existente
                 if (intervaloActualizacion) {
                     clearInterval(intervaloActualizacion);
                 }
                 
-                // Iniciar nuevo intervalo
-                intervaloActualizacion = setInterval(obtenerDatosArea2, intervaloMs);
+                intervaloActualizacion = setInterval(actualizarDatos, intervaloMs);
                 console.log(`Actualización automática activada cada ${refreshInterval.value} segundos`);
             } else {
-                // Cambiar color del indicador
                 statusIndicator.classList.remove('bg-green-600');
                 statusIndicator.classList.add('bg-red-600');
                 
-                // Detener intervalo
                 if (intervaloActualizacion) {
                     clearInterval(intervaloActualizacion);
                     intervaloActualizacion = null;
@@ -323,30 +370,66 @@
                 }
             }
         }
-        
-        // Agregar eventos
-        document.getElementById('btn-obtener-area2').addEventListener('click', obtenerDatosArea2);
-        document.getElementById('btn-actualizar').addEventListener('click', obtenerDatosArea2);
-        
-        // Configurar actualización automática
-        document.getElementById('auto-refresh').addEventListener('change', toggleAutoRefresh);
-        document.getElementById('indicator-container').addEventListener('click', function() {
-            const autoRefresh = document.getElementById('auto-refresh');
-            autoRefresh.checked = !autoRefresh.checked;
-            toggleAutoRefresh();
-        });
-        
-        // Cargar datos al iniciar la página
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM cargado, obteniendo datos iniciales...");
-            // Cargar datos del área 2 inmediatamente
-            obtenerDatosArea2();
+
+        // Función para cargar configuración (placeholder)
+        function cargarConfiguracion() {
+            // Cargar configuración guardada si existe
+            const ip = localStorage.getItem('sensor-ip') || '192.168.0.101';
+            const port = localStorage.getItem('sensor-port') || '502';
+            const slaveId = localStorage.getItem('slave-id') || '1';
             
-            // Activar actualización automática si está marcado
-            const autoRefresh = document.getElementById('auto-refresh');
-            if (autoRefresh.checked) {
-                toggleAutoRefresh();
+            document.getElementById('sensor-ip').value = ip;
+            document.getElementById('sensor-port').value = port;
+            document.getElementById('slave-id').value = slaveId;
+        }
+
+        // Función para guardar configuración
+        function guardarConfiguracion() {
+            const ip = document.getElementById('sensor-ip').value;
+            const port = document.getElementById('sensor-port').value;
+            const slaveId = document.getElementById('slave-id').value;
+            
+            localStorage.setItem('sensor-ip', ip);
+            localStorage.setItem('sensor-port', port);
+            localStorage.setItem('slave-id', slaveId);
+            
+            const configMensaje = document.getElementById('config-mensaje');
+            configMensaje.textContent = "Configuración guardada correctamente";
+            configMensaje.classList.remove('hidden', 'bg-red-100', 'text-red-700');
+            configMensaje.classList.add('bg-green-100', 'text-green-700');
+            
+            setTimeout(() => {
+                configMensaje.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar configuración
+            cargarConfiguracion();
+            
+            // Obtener lecturas iniciales del sensor local
+            obtenerLecturasLocales();
+            
+            // Configurar eventos para los botones
+            document.getElementById('btn-actualizar').addEventListener('click', obtenerLecturasLocales);
+            document.getElementById('btn-guardar').addEventListener('click', guardarConfiguracion);
+            document.getElementById('btn-verificar').addEventListener('click', verificarConexion);
+            
+            // Eliminar el evento para obtener datos del área 2
+            const btnObtenerArea2 = document.getElementById('btn-obtener-area2');
+            if (btnObtenerArea2) {
+                btnObtenerArea2.addEventListener('click', obtenerLecturasLocales);
+                btnObtenerArea2.innerHTML = '<i class="fas fa-sync-alt mr-2"></i> Actualizar Datos';
             }
+            
+            // Configurar actualización automática
+            document.getElementById('auto-refresh').addEventListener('change', toggleAutoRefresh);
+            document.getElementById('indicator-container').addEventListener('click', function() {
+                const autoRefresh = document.getElementById('auto-refresh');
+                autoRefresh.checked = !autoRefresh.checked;
+                toggleAutoRefresh();
+            });
         });
     </script>
 </body>

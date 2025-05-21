@@ -110,10 +110,10 @@ def obtener_lecturas():
         temperatura = leer_valor_float(client, ADDR_TEMPERATURA_CLIMA, "temperatura")
         
         if velocidad is not None:
-            datos["velocidad"] = round(velocidad, 2)
+            datos["velocidad"] = float(f"{velocidad:.2f}")
         
         if temperatura is not None:
-            datos["temperatura"] = round(temperatura, 2)
+            datos["temperatura"] = float(f"{temperatura:.2f}")
             
         datos["estado"] = "ok"
         
