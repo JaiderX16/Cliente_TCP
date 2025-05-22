@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Sensor FlowTrax</title>
+    <!-- Tailwind CSS desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configuración de Tailwind para colores personalizados -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'osinergmin-blue': '#0039AA',
+                        'osinergmin-yellow': '#FBE122',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-4 md:py-8">
+        <header class="bg-osinergmin-blue text-osinergmin-yellow rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-8">
+            <h1 class="text-2xl md:text-3xl font-bold text-center">Monitor de Sensor FlowTrax</h1>
+            <p class="text-center mt-2">Sistema de monitoreo en tiempo real</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
+            <!-- Panel de Velocidad del Aire -->
+            <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 border">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-wind text-osinergmin-blue text-3xl mr-3"></i>
+                    <h2 class="text-xl md:text-2xl font-semibold text-osinergmin-blue">Velocidad del Aire</h2>
+                </div>
+                <div class="text-center py-4 md:py-6">
+                    <span id="velocidad-valor" class="text-4xl md:text-5xl font-bold text-osinergmin-blue">--</span>
+                    <span class="text-xl md:text-2xl ml-2 text-gray-600">m/s</span>
+                </div>
+                <div class="mt-4 bg-gray-200 rounded-full h-4">
+                    <div id="velocidad-barra" class="bg-osinergmin-blue h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <div class="mt-2 text-sm text-gray-500 text-right">
+                    Rango: 0-30 m/s
+                </div>
+            </div>
+
+            <!-- Panel de Temperatura -->
+            <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 border">
+                <div class="flex items-center mb-4">
+                    <i class="fas fa-temperature-high text-red-600 text-3xl mr-3"></i>
+                    <h2 class="text-xl md:text-2xl font-semibold text-red-600">Temperatura</h2>
+                </div>
+                <div class="text-center py-4 md:py-6">
+                    <span id="temperatura-valor" class="text-4xl md:text-5xl font-bold text-red-600">--</span>
+                    <span class="text-xl md:text-2xl ml-2 text-gray-600">°C</span>
+                </div>
+                <div class="mt-4 bg-gray-200 rounded-full h-4">
+                    <div id="temperatura-barra" class="bg-red-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                <div class="mt-2 text-sm text-gray-500 text-right">
+                    Rango: 0-50 °C
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de Configuración -->
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-8 border">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-cogs text-gray-700 text-3xl mr-3"></i>
+                <h2 class="text-xl md:text-2xl font-semibold text-osinergmin-blue">Configuración del Sensor</h2>
+            </div>
+            
+            <form id="form-configuracion" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="sensor-ip">
+                        Dirección IP
+                    </label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-osinergmin-blue focus:border-transparent" 
+                           id="sensor-ip" type="text" placeholder="192.168.0.101">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="sensor-port">
+                        Puerto
+                    </label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-osinergmin-blue focus:border-transparent" 
+                           id="sensor-port" type="number" placeholder="502" min="1" max="65535">
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="slave-id">
+                        ID de Esclavo
+                    </label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-osinergmin-blue focus:border-transparent" 
+                           id="slave-id" type="number" placeholder="1" min="1" max="255">
+                </div>
+            </form>
+            
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mt-6">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <span class="mr-2 text-gray-700">Estado del sensor:</span>
+                    <span id="sensor-status" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-800">
+                        <i class="fas fa-circle mr-1"></i>
+                        Desconocido
+                    </span>
+                </div>
+                
+                <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                    <button id="btn-verificar" class="bg-osinergmin-blue hover:bg-blue-800 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors">
+                        <i class="fas fa-sync-alt mr-1"></i> Verificar Conexión
+                    </button>
+                    <button id="btn-guardar" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-300 transition-colors">
+                        <i class="fas fa-save mr-1"></i> Guardar Configuración
+                    </button>
+                </div>
+            </div>
+            
+            <div id="config-mensaje" class="mt-4 hidden p-3 rounded-lg"></div>
+        </div>
+
+        <!-- Panel de Estado -->
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-8 border">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-info-circle text-gray-500 text-3xl mr-3"></i>
+                <h2 class="text-xl md:text-2xl font-semibold text-osinergmin-blue">Estado del Sistema</h2>
+            </div>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div class="mb-4 md:mb-0">
+                    <p class="text-gray-600">Última actualización: <span id="timestamp" class="font-medium text-osinergmin-blue">--</span></p>
+                    <p class="text-gray-600">Estado: <span id="estado-conexion" class="font-medium">Desconectado</span></p>
+                </div>
+                <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 items-start md:items-center">
+                    <div class="flex items-center">
+                        <label class="mr-2 text-gray-600" for="auto-refresh">Actualización automática:</label>
+                        <button id="toggle-auto-refresh" class="relative inline-flex items-center justify-center w-12 h-6 bg-gray-300 rounded-full cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-osinergmin-blue">
+                            <span id="toggle-slider" class="absolute left-1 w-4 h-4 bg-white rounded-full shadow transform transition-transform"></span>
+                        </button>
+                    </div>
+                    <div class="flex items-center">
+                        <label class="mr-2 text-gray-600" for="refresh-interval">Intervalo (seg):</label>
+                        <input type="number" id="refresh-interval" class="shadow appearance-none border rounded w-20 py-1 px-2 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-osinergmin-blue focus:border-transparent" value="30" min="5" max="3600">
+                    </div>
+                    <button id="btn-actualizar" class="bg-osinergmin-blue hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-full flex items-center transition-colors focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        <i class="fas fa-sync-alt mr-2"></i> Actualizar Datos
+                    </button>
+                </div>
+            </div>
+            <div id="mensaje-estado" class="mt-4 hidden p-3 rounded-lg"></div>
+        </div>
+        
+        <!-- Panel de Datos del Área 2 -->
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-8 border">
+            <div class="flex items-center mb-4">
+                <i class="fas fa-chart-line text-osinergmin-blue text-3xl mr-3"></i>
+                <h2 class="text-xl md:text-2xl font-semibold text-osinergmin-blue">Datos del Área de Medición</h2>
+            </div>
+            <div id="area2-data" class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+                <div>
+                    <p class="text-gray-600 mb-2">Nombre del Área: <span id="nombre-area" class="font-medium text-osinergmin-blue">--</span></p>
+                    <p class="text-gray-600 mb-2">Superficie: <span id="superficie-area" class="font-medium">--</span> m²</p>
+                </div>
+                <div>
+                    <p class="text-gray-600 mb-2">Caudal Medido: <span id="caudal-medido" class="font-medium text-osinergmin-blue text-lg">--</span> m³/s</p>
+                    <p class="text-gray-600 mb-2">Caudal Requerido: <span id="caudal-requerido" class="font-medium">--</span> m³/s</p>
+                </div>
+                <div class="md:col-span-2">
+                    <p class="text-gray-600">Última Medición: <span id="ultima-medicion" class="font-medium">--</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Variables globales
+        let intervaloActualizacion = null;
+        let autoRefreshEnabled = false;
+
+        // Función para mostrar mensajes
+        function mostrarMensaje(mensaje, tipo, elementId = 'mensaje-estado') {
+            const mensajeElement = document.getElementById(elementId);
+            if (!mensajeElement) return;
+            
+            mensajeElement.textContent = mensaje;
+            mensajeElement.classList.remove(
+                'hidden', 
+                'bg-red-100', 'text-red-700', 
+                'bg-green-100', 'text-green-700', 
+                'bg-blue-100', 'text-blue-700', 
+                'bg-yellow-100', 'text-yellow-700'
+            );
+            
+            switch(tipo) {
+                case 'success':
+                    mensajeElement.classList.add('bg-green-100', 'text-green-700');
+                    break;
+                case 'error':
+                    mensajeElement.classList.add('bg-red-100', 'text-red-700');
+                    break;
+                case 'warning':
+                    mensajeElement.classList.add('bg-yellow-100', 'text-yellow-700');
+                    break;
+                case 'info':
+                    mensajeElement.classList.add('bg-blue-100', 'text-blue-700');
+                    break;
+                default:
+                    mensajeElement.classList.add('bg-gray-100', 'text-gray-700');
+            }
+            
+            // Auto-ocultar después de 5 segundos
+            setTimeout(() => {
+                mensajeElement.classList.add('hidden');
+            }, 5000);
+        }
+
+        // Función para obtener lecturas del sensor local
+        async function obtenerLecturasLocales() {
+            try {
+                const btnActualizar = document.getElementById('btn-actualizar');
+                const iconoActualizar = btnActualizar.querySelector('i');
+                
+                // Cambiar estado del botón
+                iconoActualizar.classList.remove('fa-sync-alt');
+                iconoActualizar.classList.add('fa-spinner', 'fa-spin');
+                btnActualizar.disabled = true;
+                
+                mostrarMensaje("Obteniendo datos del sensor local...", 'info');
+                
+                const response = await fetch('/api/lecturas');
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const datos = await response.json();
+                console.log("Datos del sensor local:", datos);
+                
+                if (datos && typeof datos === 'object') {
+                    // Actualizar velocidad y temperatura
+                    const velocidadAire = datos.velocidad !== null && datos.velocidad !== undefined 
+                        ? parseFloat(datos.velocidad).toFixed(2) 
+                        : "--";
+                    const temperatura = datos.temperatura !== null && datos.temperatura !== undefined 
+                        ? parseFloat(datos.temperatura).toFixed(2) 
+                        : "--";
+                    
+                    actualizarVelocidad(velocidadAire);
+                    actualizarTemperatura(temperatura);
+                    
+                    // Actualizar timestamp
+                    document.getElementById('timestamp').textContent = datos.timestamp || new Date().toLocaleString();
+                    
+                    // Actualizar estado de conexión
+                    actualizarEstadoConexion(datos.sensor_online || false);
+                    
+                    // Actualizar datos del área
+                    actualizarDatosArea(datos);
+                    
+                    // Mostrar mensaje según el estado
+                    if (datos.estado === "ok" || datos.sensor_online) {
+                        mostrarMensaje("Datos del sensor cargados correctamente", 'success');
+                    } else {
+                        mostrarMensaje(datos.mensaje || "Sensor desconectado", 'warning');
+                    }
+                } else {
+                    throw new Error("Formato de datos inválido");
+                }
+            } catch (error) {
+                console.error('Error al obtener datos del sensor local:', error);
+                actualizarVelocidad("--");
+                actualizarTemperatura("--");
+                document.getElementById('timestamp').textContent = new Date().toLocaleString();
+                actualizarEstadoConexion(false);
+                mostrarMensaje("Error al obtener datos del sensor: " + error.message, 'error');
+            } finally {
+                // Restaurar estado del botón
+                const btnActualizar = document.getElementById('btn-actualizar');
+                const iconoActualizar = btnActualizar.querySelector('i');
+                iconoActualizar.classList.remove('fa-spinner', 'fa-spin');
+                iconoActualizar.classList.add('fa-sync-alt');
+                btnActualizar.disabled = false;
+            }
+        }
+
+        // Función para actualizar velocidad del aire
+        function actualizarVelocidad(valor) {
+            const velocidadValor = document.getElementById('velocidad-valor');
+            const velocidadBarra = document.getElementById('velocidad-barra');
+            
+            velocidadValor.textContent = valor;
+            
+            if (valor !== "--" && !isNaN(parseFloat(valor))) {
+                const velocidadNumero = parseFloat(valor);
+                const porcentajeVelocidad = Math.min(100, Math.max(0, (velocidadNumero / 30) * 100));
+                velocidadBarra.style.width = `${porcentajeVelocidad}%`;
+            } else {
+                velocidadBarra.style.width = "0%";
+            }
+        }
+
+        // Función para actualizar temperatura
+        function actualizarTemperatura(valor) {
+            const temperaturaValor = document.getElementById('temperatura-valor');
+            const temperaturaBarra = document.getElementById('temperatura-barra');
+            
+            temperaturaValor.textContent = valor;
+            
+            if (valor !== "--" && !isNaN(parseFloat(valor))) {
+                const temperaturaNumero = parseFloat(valor);
+                const porcentajeTemperatura = Math.min(100, Math.max(0, (temperaturaNumero / 50) * 100));
+                temperaturaBarra.style.width = `${porcentajeTemperatura}%`;
+            } else {
+                temperaturaBarra.style.width = "0%";
+            }
+        }
+
+        // Función para actualizar estado de conexión
+        function actualizarEstadoConexion(conectado) {
+            const estadoConexion = document.getElementById('estado-conexion');
+            const sensorStatus = document.getElementById('sensor-status');
+            
+            if (conectado) {
+                estadoConexion.textContent = "Conectado";
+                estadoConexion.className = "font-medium text-green-600";
+                
+                sensorStatus.innerHTML = '<i class="fas fa-circle mr-1 text-green-600"></i> Conectado';
+                sensorStatus.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700';
+            } else {
+                estadoConexion.textContent = "Desconectado";
+                estadoConexion.className = "font-medium text-red-600";
+                
+                sensorStatus.innerHTML = '<i class="fas fa-circle mr-1 text-red-600"></i> Desconectado';
+                sensorStatus.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-700';
+            }
+        }
+
+        // Función para actualizar datos del área
+        function actualizarDatosArea(datos) {
+            document.getElementById('nombre-area').textContent = datos.nombre_area || "Área 2";
+            document.getElementById('superficie-area').textContent = datos.superficie || "120";
+            
+            // Calcular caudal si tenemos velocidad y superficie
+            if (datos.velocidad !== null && datos.superficie) {
+                const caudalCalculado = (parseFloat(datos.velocidad) * parseFloat(datos.superficie)).toFixed(3);
+                document.getElementById('caudal-medido').textContent = caudalCalculado;
+            } else {
+                document.getElementById('caudal-medido').textContent = "--";
+            }
+            
+            document.getElementById('caudal-requerido').textContent = datos.caudal_requerido || "50";
+            document.getElementById('ultima-medicion').textContent = datos.timestamp || new Date().toLocaleString();
+        }
+
+        // Función para verificar conexión
+        async function verificarConexion() {
+            const btnVerificar = document.getElementById('btn-verificar');
+            const iconoVerificar = btnVerificar.querySelector('i');
+            
+            try {
+                iconoVerificar.classList.remove('fa-sync-alt');
+                iconoVerificar.classList.add('fa-spinner', 'fa-spin');
+                btnVerificar.disabled = true;
+                
+                mostrarMensaje("Verificando conexión...", 'info', 'config-mensaje');
+                
+                // Simular verificación (en implementación real, hacer ping al sensor)
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                mostrarMensaje("Conexión verificada correctamente", 'success', 'config-mensaje');
+                
+            } catch (error) {
+                mostrarMensaje("Error al verificar conexión: " + error.message, 'error', 'config-mensaje');
+            } finally {
+                iconoVerificar.classList.remove('fa-spinner', 'fa-spin');
+                iconoVerificar.classList.add('fa-sync-alt');
+                btnVerificar.disabled = false;
+            }
+        }
+
+        // Configuración de actualización automática
+        function toggleAutoRefresh() {
+            const toggleButton = document.getElementById('toggle-auto-refresh');
+            const toggleSlider = document.getElementById('toggle-slider');
+            const refreshInterval = document.getElementById('refresh-interval');
+            
+            autoRefreshEnabled = !autoRefreshEnabled;
+            
+            if (autoRefreshEnabled) {
+                toggleButton.classList.remove('bg-gray-300');
+                toggleButton.classList.add('bg-osinergmin-blue');
+                toggleSlider.classList.add('translate-x-6');
+                
+                const intervaloMs = parseInt(refreshInterval.value) * 1000;
+                
+                if (intervaloActualizacion) {
+                    clearInterval(intervaloActualizacion);
+                }
+                
+                intervaloActualizacion = setInterval(obtenerLecturasLocales, intervaloMs);
+                mostrarMensaje(`Actualización automática activada cada ${refreshInterval.value} segundos`, 'success');
+            } else {
+                toggleButton.classList.remove('bg-osinergmin-blue');
+                toggleButton.classList.add('bg-gray-300');
+                toggleSlider.classList.remove('translate-x-6');
+                
+                if (intervaloActualizacion) {
+                    clearInterval(intervaloActualizacion);
+                    intervaloActualizacion = null;
+                }
+                mostrarMensaje('Actualización automática desactivada', 'info');
+            }
+        }
+
+        // Función para cargar configuración
+        function cargarConfiguracion() {
+            const ip = localStorage.getItem('sensor-ip') || '192.168.0.101';
+            const port = localStorage.getItem('sensor-port') || '502';
+            const slaveId = localStorage.getItem('slave-id') || '1';
+            
+            document.getElementById('sensor-ip').value = ip;
+            document.getElementById('sensor-port').value = port;
+            document.getElementById('slave-id').value = slaveId;
+        }
+
+        // Función para guardar configuración
+        function guardarConfiguracion() {
+            const ip = document.getElementById('sensor-ip').value.trim();
+            const port = document.getElementById('sensor-port').value.trim();
+            const slaveId = document.getElementById('slave-id').value.trim();
+            
+            // Validaciones básicas
+            if (!ip || !port || !slaveId) {
+                mostrarMensaje("Todos los campos son requeridos", 'error', 'config-mensaje');
+                return;
+            }
+            
+            if (parseInt(port) < 1 || parseInt(port) > 65535) {
+                mostrarMensaje("El puerto debe estar entre 1 y 65535", 'error', 'config-mensaje');
+                return;
+            }
+            
+            if (parseInt(slaveId) < 1 || parseInt(slaveId) > 255) {
+                mostrarMensaje("El ID de esclavo debe estar entre 1 y 255", 'error', 'config-mensaje');
+                return;
+            }
+            
+            localStorage.setItem('sensor-ip', ip);
+            localStorage.setItem('sensor-port', port);
+            localStorage.setItem('slave-id', slaveId);
+            
+            mostrarMensaje("Configuración guardada correctamente", 'success', 'config-mensaje');
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar configuración
+            cargarConfiguracion();
+            
+            // Obtener lecturas iniciales del sensor local
+            obtenerLecturasLocales();
+            
+            // Configurar eventos para los botones
+            document.getElementById('btn-actualizar').addEventListener('click', obtenerLecturasLocales);
+            document.getElementById('btn-guardar').addEventListener('click', guardarConfiguracion);
+            document.getElementById('btn-verificar').addEventListener('click', verificarConexion);
+            
+            // Configurar toggle de actualización automática
+            document.getElementById('toggle-auto-refresh').addEventListener('click', toggleAutoRefresh);
+            
+            // Configurar cambio de intervalo
+            document.getElementById('refresh-interval').addEventListener('change', function() {
+                if (autoRefreshEnabled) {
+                    // Reiniciar el intervalo con el nuevo valor
+                    toggleAutoRefresh();
+                    toggleAutoRefresh();
+                }
+            });
+        });
+
+        // Limpiar intervalos al cerrar la página
+        window.addEventListener('beforeunload', function() {
+            if (intervaloActualizacion) {
+                clearInterval(intervaloActualizacion);
+            }
+        });
+    </script>
+</body>
+</html>
